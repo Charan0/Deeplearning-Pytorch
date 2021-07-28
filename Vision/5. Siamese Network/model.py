@@ -21,7 +21,7 @@ class SiameseNetwork(nn.Module):
             # Fully connected layers
             nn.Linear(emb_dim, emb_dim),
             nn.ReLU(inplace=True),
-            nn.Dropout(rate, inplace=True),
+            nn.Dropout(rate),
             nn.Linear(emb_dim, emb_dim),
         )
 

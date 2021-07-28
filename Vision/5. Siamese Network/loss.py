@@ -1,11 +1,13 @@
 import torch
 import torch.nn as nn
+from typing import Union
 
 
 class ContrastiveLoss(nn.Module):
-    def __init__(self, alpha: float):
+    def __init__(self, alpha: float = 0.1, device: Union[str, torch.device] = "cpu"):
         super(ContrastiveLoss, self).__init__()
         self.alpha = alpha  # The margin hyperparameter
+        self.device = device
 
     def __call__(self, features1: torch.Tensor, features2: torch.Tensor):
         """
@@ -32,8 +34,9 @@ class ContrastiveLoss(nn.Module):
         # Mean Negative calculation
         mean_neg = torch.sum(similarity_anc_neg, dim=1, keepdim=True) / (bs - 1)  # Mean Negative, off-diagonal values
         # Closest negative calculation
-        mask1 = (torch.eye(bs) == 1).bool()  # Mask to exclude the diagonals
+        mask1 = (torch.eye(bs) == 1).bool().to(self.device)  # Mask to exclude the diagonals
         mask2 = similarity_anc_neg > similarity_anc_pos.view(bs, 1)  # Mask to exclude sim-anc-neg > sim-anc-pos
+
         mask = mask1 | mask2  # Final mask
         similarity_anc_neg[mask] = -2
         closest_neg = torch.max(similarity_anc_neg, dim=1, keepdim=True).values
