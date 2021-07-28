@@ -1,9 +1,5 @@
 import torch
 import torch.nn as nn
-from torchvision.models import vgg19
-
-pretrained_net = vgg19(pretrained=True)
-inp = torch.randn(1, 3, 256, 256)
 
 
 class SiameseNetwork(nn.Module):
