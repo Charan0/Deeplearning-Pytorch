@@ -2,42 +2,32 @@ import torch
 import torch.nn as nn
 from torchvision.models import vgg19
 
-encoder_network = vgg19(pretrained=True)
+pretrained_net = vgg19(pretrained=True)
 inp = torch.randn(1, 3, 256, 256)
 
 
 class SiameseNetwork(nn.Module):
-    def __init__(self, network: nn.Module, emb_dim: int = 1024, rate: float = 0.5, freeze: bool = False):
+    # TODO: Use Resnet or InceptionV3 instead of vgg19 - too many trainable parameters bruh!
+    def __init__(self, encoder_network: nn.Module, emb_dim: int = 1024, rate: float = 0.5, freeze: bool = False):
         super().__init__()
         if freeze:
-            for param in network.parameters():
-                param.requires_grad = False
+            encoder_network.requires_grad_(False)
 
-        self.encoder_network = nn.Sequential(
-            network.features,
-            network.avgpool,  # Output of size (N, 512, 7, 7)
-            nn.Flatten(),
-            # Linear Block - 1
-            nn.Linear(512 * 7 * 7, 4096, bias=False),
+        self.siamese_network = nn.Sequential(
+            encoder_network.features,
+            encoder_network.avgpool,  # Output of size (N, 512, 7, 7)
+            # Increases the channel dimensions, reduces spatial dimension
+            nn.Conv2d(512, 1024, kernel_size=(5, 5)),
             nn.ReLU(inplace=True),
-            nn.Dropout(rate),
-            # Linear Block - 2
-            nn.Linear(4096, 2048, bias=False),
+            nn.MaxPool2d((2, 2)),  # Output of size (N, 1024, 1, 1)
+            nn.Conv2d(1024, emb_dim, (1, 1)),  # Change the channel dimensions
+            nn.Flatten(),  # Output shape (N, emb_dim)
+            # Fully connected layers
+            nn.Linear(emb_dim, emb_dim),
             nn.ReLU(inplace=True),
-            # Embedding Layer
-            nn.Linear(2048, emb_dim)
+            nn.Dropout(rate, inplace=True),
+            nn.Linear(emb_dim, emb_dim),
         )
 
     def forward(self, images: torch.Tensor):
-        return self.encoder_network(images)
-
-
-class SimilarityLoss(nn.Module):
-    def __init__(self, alpha: float = 0.2):
-        super(SimilarityLoss, self).__init__()
-        self.alpha = alpha
-
-    def forward(self, anc_emb: torch.Tensor, pos_emb: torch.Tensor, neg_emb: torch.Tensor):
-        positive_dist = torch.norm(anc_emb - pos_emb, dim=1)
-        negative_dist = torch.norm(anc_emb - neg_emb, dim=1)
-        return torch.maximum(positive_dist - negative_dist + self.alpha, torch.zeros_like(positive_dist)).mean()
+        return self.siamese_network(images)
