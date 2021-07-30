@@ -28,7 +28,6 @@ transform = T.Compose([
     T.ToTensor(),
     GrayScale()
 ])
-pretrained_net = vgg19(pretrained=True)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Running on device: {device}")
@@ -41,7 +40,7 @@ alpha = 0.25
 siamese_ds = SiameseDataset("/home/charan/Downloads/sketches", "/home/charan/Downloads/photos", transform=transform)
 siamese_dl = DataLoader(siamese_ds, bs, shuffle=True)
 
-network = SiameseNetwork(pretrained_net, emb_dim=emb_dim, rate=0.6, freeze=True)
+network = SiameseNetwork(emb_dim=emb_dim, rate=0.6)
 optimizer = optim.Adam(network.parameters(), lr=lr)
 loss_fn = ContrastiveLoss(alpha=alpha, device=device)
 
